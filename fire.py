@@ -267,9 +267,6 @@ fp = FireProx(args)
 
 def main():
 
-	#print(fp.get_resource(fp.api_id))
-	#sys.exit(1)
-
 	if args.command == 'list':
 		print(f'Listing API\'s...')
 		result = fp.list_api()
