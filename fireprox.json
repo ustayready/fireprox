@@ -1,0 +1,47 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "2019-02-02T05:59:55Z",
+    "title": "FireProx"
+  },
+  "basePath": "/fireprox",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/{proxy+}": {
+      "x-amazon-apigateway-any-method": {
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "proxy",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {},
+        "x-amazon-apigateway-integration": {
+          "uri": "https://haveibeenpwned.com/api/v2/breachedaccount/{proxy}",
+          "responses": {
+            "default": {
+              "statusCode": "200"
+            }
+          },
+          "requestParameters": {
+            "integration.request.path.proxy": "method.request.path.proxy"
+          },
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "ANY",
+          "cacheNamespace": "irx7tm",
+          "cacheKeyParameters": [
+            "method.request.path.proxy"
+          ],
+          "type": "http_proxy"
+        }
+      }
+    }
+  }
+}
