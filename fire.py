@@ -1,4 +1,6 @@
 from multiprocessing import Pool
+from pathlib import Path
+import shutil
 import tldextract
 import boto3
 import os
@@ -13,11 +15,16 @@ class FireProx(object):
 	def __init__(self, arguments):
 		self.access_key = arguments.access_key
 		self.secret_access_key = arguments.secret_access_key
+		self.region = arguments.region
 		self.command = arguments.command
 		self.api_id = arguments.api_id
 		self.url = arguments.url
 		self.api_list = []
 		self.client = None
+
+		if self.access_key and self.access_key:
+			if not self.region:
+				self.error('Please provide a region with AWS credentials')
 
 		if not self.load_creds():
 			self.error('Unable to load AWS credentials')
@@ -30,28 +37,73 @@ class FireProx(object):
 		return 'FireProx()'
 
 
+	def create_config(self):
+		self.clear_creds()
+
+		cred_template = '[default]\naws_access_key_id={}\naws_secret_access_key={}'
+		config_template = '[default]\nregion={}\noutput=json'
+
+		try:
+			root_path = f'{str(Path.home())}\\.aws'
+			cred_file = os.path.join(root_path, 'credentials')
+			config_file = os.path.join(root_path, 'config')
+
+			if not os.path.isdir(root_path):
+				os.mkdir(root_path)
+
+			if not os.path.isfile(cred_file):
+				with open(cred_file, 'w') as fh:
+					fh.write(
+						cred_template.format(
+							self.access_key, self.secret_access_key
+						)
+					)
+
+			if not os.path.isfile(config_file):
+				with open(config_file, 'w') as fh:
+					fh.write(
+						config_template.format(
+							self.region
+						)
+					)
+			return True
+		except:
+			return False
+
+
+	def clear_creds(self):
+		try:
+			root_path = f'{str(Path.home())}\\.aws'
+			if os.path.isdir(root_path):
+				shutil.rmtree(root_path)
+				return True
+		except:
+			return False
+
+
 	def load_creds(self):
-		try:
-			client = boto3.client('apigateway')
-			client.get_account()
-			self.client = client
-			return True
-		except:
-			pass
-
-		try:
-			client = boto3.client(
-				'apigateway',
-				aws_access_key_id=self.access_key,
-				aws_secret_access_key=self.secret_access_key
-			)
-			client.get_account()
-			self.client = client
-			return True
-		except:
-			pass
-
-		return False
+		if not any([self.access_key,self.secret_access_key]):
+			try:
+				self.client = boto3.client('apigateway')
+				self.client.get_account()
+				return True
+			except:
+				pass
+		elif self.access_key and self.secret_access_key:
+			try:
+				self.client = boto3.client(
+					'apigateway',
+					aws_access_key_id=self.access_key,
+					aws_secret_access_key=self.secret_access_key,
+					region_name=self.region
+				)
+				self.client.get_account()
+				self.create_config()
+				return True
+			except:
+				pass
+		else:
+			return False
 
 
 	def error(self, error):
@@ -254,6 +306,8 @@ parser.add_argument('--access_key',
 	help='AWS Access Key', type=str, default=None)
 parser.add_argument('--secret_access_key',
 	help='AWS Secret Access Key', type=str, default=None)
+parser.add_argument('--region',
+	help='AWS Region', type=str, default=None)
 parser.add_argument('--command',
 	help='Commands: list, create, delete, update', type=str, default=None)
 parser.add_argument('--api_id',
