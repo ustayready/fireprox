@@ -72,7 +72,6 @@ $ cd fireprox
 Note that Python 3 is required.
 
 ## Screenshots
-<<<<<<< HEAD
 ![Usage](https://raw.githubusercontent.com/ustayready/fireprox/master/screenshots/usage.png "usage")
 ![List](https://raw.githubusercontent.com/ustayready/fireprox/master/screenshots/list.png "list")
 ![Create](https://raw.githubusercontent.com/ustayready/fireprox/master/screenshots/create.png "create")
