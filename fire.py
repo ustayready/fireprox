@@ -345,26 +345,34 @@ class FireProx(object):
         return response['uri']
 
 
-parser = argparse.ArgumentParser(description='FireProx API Gateway Manager')
-parser.add_argument('--access_key',
-    help='AWS Access Key', type=str, default=None)
-parser.add_argument('--secret_access_key',
-    help='AWS Secret Access Key', type=str, default=None)
-parser.add_argument('--region',
-    help='AWS Region', type=str, default=None)
-parser.add_argument('--command',
-    help='Commands: list, create, delete, update', type=str, default=None)
-parser.add_argument('--api_id',
-    help='API ID', type=str, required=False)
-parser.add_argument('--url',
-    help='URL end-point', type=str, required=False)
-args = parser.parse_args()
+def parse_arguments() -> argparse.Namespace:
+    """Parse command line arguments and return namespace
 
-fp = FireProx(args)
+    :return:
+    """
+    parser = argparse.ArgumentParser(description='FireProx API Gateway Manager')
+    parser.add_argument('--access_key',
+        help='AWS Access Key', type=str, default=None)
+    parser.add_argument('--secret_access_key',
+        help='AWS Secret Access Key', type=str, default=None)
+    parser.add_argument('--region',
+        help='AWS Region', type=str, default=None)
+    parser.add_argument('--command',
+        help='Commands: list, create, delete, update', type=str, default=None)
+    parser.add_argument('--api_id',
+        help='API ID', type=str, required=False)
+    parser.add_argument('--url',
+        help='URL end-point', type=str, required=False)
+    return parser.parse_args()
 
 
 def main():
+    """Run the main program
 
+    :return:
+    """
+    args = parse_arguments()
+    fp = FireProx(args)
     if args.command == 'list':
         print(f'Listing API\'s...')
         result = fp.list_api()
