@@ -9,10 +9,12 @@ import datetime
 import tzlocal
 import argparse
 import json
+from typing import Tuple, Callable
 
 
 class FireProx(object):
-    def __init__(self, arguments):
+    def __init__(self, arguments: argparse.Namespace, help_text: str):
+        self.profile_name = arguments.profile_name
         self.access_key = arguments.access_key
         self.secret_access_key = arguments.secret_access_key
         self.region = arguments.region
@@ -21,6 +23,7 @@ class FireProx(object):
         self.url = arguments.url
         self.api_list = []
         self.client = None
+        self.help = help_text
 
         if self.access_key and self.secret_access_key:
             if not self.region:
@@ -110,7 +113,7 @@ class FireProx(object):
             return False
 
     def error(self, error):
-        parser.print_help()
+        print(self.help)
         sys.exit(error)
 
     def get_template(self):
@@ -331,12 +334,14 @@ class FireProx(object):
         return response['uri']
 
 
-def parse_arguments() -> argparse.Namespace:
+def parse_arguments() -> Tuple[argparse.Namespace, str]:
     """Parse command line arguments and return namespace
 
-    :return:
+    :return: Namespace for arguments and help text as a tuple
     """
     parser = argparse.ArgumentParser(description='FireProx API Gateway Manager')
+    parser.add_argument('--profile_name',
+                        help='AWS Profile Name to store/retrieve credentials', type=str, default='fireprox')
     parser.add_argument('--access_key',
                         help='AWS Access Key', type=str, default=None)
     parser.add_argument('--secret_access_key',
@@ -349,7 +354,7 @@ def parse_arguments() -> argparse.Namespace:
                         help='API ID', type=str, required=False)
     parser.add_argument('--url',
                         help='URL end-point', type=str, required=False)
-    return parser.parse_args()
+    return parser.parse_args(), parser.format_help()
 
 
 def main():
@@ -357,8 +362,8 @@ def main():
 
     :return:
     """
-    args = parse_arguments()
-    fp = FireProx(args)
+    args, help_text = parse_arguments()
+    fp = FireProx(args, help_text)
     if args.command == 'list':
         print(f'Listing API\'s...')
         result = fp.list_api()
