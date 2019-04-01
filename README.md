@@ -73,6 +73,7 @@ Note that Python 3 is required.
 ![List](https://raw.githubusercontent.com/ustayready/fireprox/master/screenshots/list.png "list")
 ![Create](https://raw.githubusercontent.com/ustayready/fireprox/master/screenshots/create.png "create")
 ![Delete](https://raw.githubusercontent.com/ustayready/fireprox/master/screenshots/delete.png "delete")
+![Demo](https://raw.githubusercontent.com/ustayready/fireprox/master/screenshots/demo.png "demo")
 
 ## Maintainer
 - FireProx was originally created by [Mike Felch](https://github.com/ustayready) ([@ustayready](https://twitter.com/ustayready)) 
