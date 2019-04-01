@@ -3,10 +3,10 @@ FireProx
 - [Overview](#overview)
 	- [Benefits](#benefits)
 	- [Disclaimers](#disclaimers)
+- [Maintainer](#maintainer)
 - [Basic Usage](#basic-usage)
 - [Installation](#installation)
 - [Screenshots](#screenshots)
-- [Maintainer](#maintainer)
 - [Contributing](#contributing)
 
 ## Overview ##
@@ -15,6 +15,9 @@ Being able to hide or continually rotate the source IP address when making web c
 **Brought to you by:**
 
 ![Black Hills Information Security](https://www.blackhillsinfosec.com/wp-content/uploads/2016/03/BHIS-logo-L-300x300.png "Black Hills Information Security")
+
+## Maintainer
+- Follow me on Twitter for more tips, tricks, and tools (or just to say hi)! ([Mike Felch - @ustayready](https://twitter.com/ustayready)) 
 
 ### Benefits ##
 
@@ -73,9 +76,6 @@ Note that Python 3 is required.
 ![List](https://github.com/ustayready/fireprox/blob/master/screenshots/list.png "list")
 ![Create](https://github.com/ustayready/fireprox/blob/master/screenshots/create.png "create")
 ![Delete](https://github.com/ustayready/fireprox/blob/master/screenshots/delete.png "delete")
-
-## Maintainer
-- FireProx was originally created by [Mike Felch](https://github.com/ustayready) ([@ustayready](https://twitter.com/ustayready)) 
 
 ## Contributing
 
