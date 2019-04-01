@@ -69,10 +69,10 @@ $ cd fireprox
 Note that Python 3 is required.
 
 ## Screenshots
-![Usage](https://raw.githubusercontent.com/ustayready/fireprox/master/screenshots/usage.png "usage")
-![List](https://raw.githubusercontent.com/ustayready/fireprox/master/screenshots/list.png "list")
-![Create](https://raw.githubusercontent.com/ustayready/fireprox/master/screenshots/create.png "create")
-![Delete](https://raw.githubusercontent.com/ustayready/fireprox/master/screenshots/delete.png "delete")
+![Usage](https://github.com/ustayready/fireprox/blob/master/screenshots/usage.png "usage")
+![List](https://github.com/ustayready/fireprox/blob/master/screenshots/list.png "list")
+![Create](https://github.com/ustayready/fireprox/blob/master/screenshots/create.png "create")
+![Delete](https://github.com/ustayready/fireprox/blob/master/screenshots/delete.png "delete")
 
 ## Maintainer
 - FireProx was originally created by [Mike Felch](https://github.com/ustayready) ([@ustayready](https://twitter.com/ustayready)) 
