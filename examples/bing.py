@@ -10,12 +10,12 @@ from bs4 import BeautifulSoup
 
 add_lock = threading.Lock()
 count_queue = Queue()
-search_results = []
+search_results = set()
 
-parser = argparse.ArgumentParser(description='FireProx API Google Scraper')
+parser = argparse.ArgumentParser(description='FireProx API Bing Scraper')
 parser.add_argument('--proxy', help='FireProx API URL', type=str, default=None)
 parser.add_argument('--search', help='Search term', type=str, default=None)
-parser.add_argument('--pages', help='Google search pages to enumerate (default:1000)', type=int, default=1000)
+parser.add_argument('--pages', help='Bing search pages to enumerate (default:100)', type=int, default=100)
 args = parser.parse_args()
 
 
@@ -23,7 +23,7 @@ def check_query(count, url, query):
 	if url[-1] == '/':
 		url = url[:-1]
 
-	url = f'{url}/search?q={query}&start={count}&num=100'
+	url = f'{url}/search?q={query}&first={count}'
 	headers = {
 		'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:65.0) Gecko/20100101 Firefox/65.0',
 	}
@@ -33,11 +33,12 @@ def check_query(count, url, query):
 
 	with add_lock:
 		idx = 1
-		for g in soup.find_all('div', class_='r'):
-			link = g.find_all('a')[0]['href']
-			title = g.find_all('h3')[0]
-			item = f'{title.text} ({link})'
-			search_results.append((count+idx,item))
+		for g in soup.find_all('li', class_='b_algo'):
+			result = g.find('h2')
+			link = result.find('a')['href']
+			title = result.text
+			item = f'{title} ({link})'
+			search_results.add(item)
 			idx+=1
 
 
@@ -57,17 +58,16 @@ def main():
 		t = threading.Thread(target=process_queue, args=(args.proxy, args.search,))
 		t.daemon = True
 		t.start()
-		
+
 	start = time.time()
 
 	count_queue.put(0)
-	for count in range(1,args.pages+1)[99::100]:
-		count_queue.put(count)
+	for count in range(1,args.pages+1)[9::10]:
+		count_queue.put(count+1)
 
 	count_queue.join()
 
-	final_results = sorted(search_results, key=lambda tup: tup[0])
-	for x in final_results:
+	for x in list(search_results):
 		print(x)
 
 	print(f'Results: {len(search_results)}')
