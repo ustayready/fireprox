@@ -22,7 +22,7 @@ class FireProx(object):
         self.api_list = []
         self.client = None
 
-        if self.access_key and self.access_key:
+        if self.access_key and self.secret_access_key:
             if not self.region:
                 self.error('Please provide a region with AWS credentials')
 
