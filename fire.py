@@ -32,10 +32,8 @@ class FireProx(object):
         if not self.command:
             self.error('Please provide a valid command')
 
-
     def __str__(self):
         return 'FireProx()'
-
 
     def create_config(self):
         self.clear_creds()
@@ -70,7 +68,6 @@ class FireProx(object):
         except:
             return False
 
-
     def clear_creds(self):
         try:
             root_path = f'{str(Path.home())}\\.aws'
@@ -80,9 +77,8 @@ class FireProx(object):
         except:
             return False
 
-
     def load_creds(self):
-        if not any([self.access_key,self.secret_access_key]):
+        if not any([self.access_key, self.secret_access_key]):
             try:
                 if not self.region:
                     self.client = boto3.client('apigateway')
@@ -113,11 +109,9 @@ class FireProx(object):
         else:
             return False
 
-
     def error(self, error):
         parser.print_help()
         sys.exit(error)
-
 
     def get_template(self):
         url = self.url
@@ -208,12 +202,11 @@ class FireProx(object):
           }
         }
         '''
-        template = template.replace('{{url}}',url)
-        template = template.replace('{{title}}',title)
-        template = template.replace('{{version_date}}',version_date)
+        template = template.replace('{{url}}', url)
+        template = template.replace('{{title}}', title)
+        template = template.replace('{{version_date}}', version_date)
 
         return str.encode(template)
-
 
     def create_api(self, url):
         if not url:
@@ -224,7 +217,7 @@ class FireProx(object):
         template = self.get_template()
         response = self.client.import_rest_api(
             parameters={
-                'endpointConfigurationTypes':'REGIONAL'
+                'endpointConfigurationTypes': 'REGIONAL'
             },
             body=template
         )
@@ -238,7 +231,6 @@ class FireProx(object):
             resource_id,
             proxy_url
         )
-
 
     def update_api(self, api_id, url):
         if not any([api_id, url]):
@@ -258,14 +250,13 @@ class FireProx(object):
                     {
                         'op': 'replace',
                         'path': '/uri',
-                        'value': '{}/{}'.format(url,r'{proxy}'),
+                        'value': '{}/{}'.format(url, r'{proxy}'),
                     },
                 ]
             )
-            return response['uri'].replace('/{proxy}','') == url
+            return response['uri'].replace('/{proxy}', '') == url
         else:
             self.error(f'Unable to update, no valid resource for {api_id}')
-
 
     def delete_api(self, api_id):
         if not api_id:
@@ -280,7 +271,6 @@ class FireProx(object):
                 return True
         return False
 
-
     def list_api(self, deleted_api_id=None):
         response = self.client.get_rest_apis()
         for item in response['items']:
@@ -288,22 +278,20 @@ class FireProx(object):
                 created_dt = item['createdDate']
                 api_id = item['id']
                 name = item['name']
-                proxy_url = self.get_integration(api_id).replace('{proxy}','')
+                proxy_url = self.get_integration(api_id).replace('{proxy}', '')
                 url = f'https://{api_id}.execute-api.{self.region}.amazonaws.com/fireprox/'
                 if not api_id == deleted_api_id:
                     print(f'[{created_dt}] ({api_id}) {name}: {url} => {proxy_url}')
             except:
                 pass
-           
+
         return response['items']
 
-
     def store_api(self, api_id, name, created_dt, version_dt, url,
-        resource_id, proxy_url):
+                  resource_id, proxy_url):
         print(
             f'[{created_dt}] ({api_id}) {name} => {proxy_url} ({url})'
         )
-
 
     def create_deployment(self, api_id):
         if not api_id:
@@ -317,8 +305,7 @@ class FireProx(object):
         )
         resource_id = response['id']
         return (resource_id,
-            f'https://{api_id}.execute-api.{self.region}.amazonaws.com/fireprox/')
-
+                f'https://{api_id}.execute-api.{self.region}.amazonaws.com/fireprox/')
 
     def get_resource(self, api_id):
         if not api_id:
@@ -331,7 +318,6 @@ class FireProx(object):
             if item_path == '/{proxy+}':
                 return item_id
         return None
-
 
     def get_integration(self, api_id):
         if not api_id:
@@ -352,17 +338,17 @@ def parse_arguments() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(description='FireProx API Gateway Manager')
     parser.add_argument('--access_key',
-        help='AWS Access Key', type=str, default=None)
+                        help='AWS Access Key', type=str, default=None)
     parser.add_argument('--secret_access_key',
-        help='AWS Secret Access Key', type=str, default=None)
+                        help='AWS Secret Access Key', type=str, default=None)
     parser.add_argument('--region',
-        help='AWS Region', type=str, default=None)
+                        help='AWS Region', type=str, default=None)
     parser.add_argument('--command',
-        help='Commands: list, create, delete, update', type=str, default=None)
+                        help='Commands: list, create, delete, update', type=str, default=None)
     parser.add_argument('--api_id',
-        help='API ID', type=str, required=False)
+                        help='API ID', type=str, required=False)
     parser.add_argument('--url',
-        help='URL end-point', type=str, required=False)
+                        help='URL end-point', type=str, required=False)
     return parser.parse_args()
 
 
@@ -387,10 +373,10 @@ def main():
 
     elif args.command == 'update':
         print(f'Updating {fp.api_id} => {fp.url}...')
-        result = fp.update_api(fp.api_id,fp.url)
+        result = fp.update_api(fp.api_id, fp.url)
         success = 'Success!' if result else 'Failed!'
         print(f'API Update Complete: {success}')
-   
+
 
 if __name__ == '__main__':
     main()
