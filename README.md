@@ -74,6 +74,13 @@ $ cd fireprox
 
 Note that Python 3 is required.
 
+Building a Docker image:
+```bash
+$ git clone https://github.com/ustayready/fireprox
+$ cd fireprox
+$ docker build -t [name:tag] .
+```
+
 ## Screenshots
 ![Usage](https://github.com/ustayready/fireprox/blob/master/screenshots/usage.png "usage")
 ![List](https://github.com/ustayready/fireprox/blob/master/screenshots/list.png "list")
