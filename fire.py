@@ -18,7 +18,7 @@ class FireProx(object):
         self.profile_name = arguments.profile_name
         self.access_key = arguments.access_key
         self.secret_access_key = arguments.secret_access_key
-        self.session_token= arguments.session_token
+        self.session_token = arguments.session_token
         self.region = arguments.region
         self.command = arguments.command
         self.api_id = arguments.api_id
