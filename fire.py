@@ -9,6 +9,7 @@ import datetime
 import tzlocal
 import argparse
 import json
+import configparser
 from typing import Tuple, Callable
 
 
@@ -17,6 +18,7 @@ class FireProx(object):
         self.profile_name = arguments.profile_name
         self.access_key = arguments.access_key
         self.secret_access_key = arguments.secret_access_key
+        self.session_token= arguments.session_token
         self.region = arguments.region
         self.command = arguments.command
         self.api_id = arguments.api_id
@@ -38,77 +40,78 @@ class FireProx(object):
     def __str__(self):
         return 'FireProx()'
 
-    def create_config(self):
-        self.clear_creds()
+    def _try_instance_profile(self) -> bool:
+        """Try instance profile credentials
 
-        cred_template = '[default]\naws_access_key_id={}\naws_secret_access_key={}'
-        config_template = '[default]\nregion={}\noutput=json'
-
+        :return:
+        """
         try:
-            root_path = f'{str(Path.home())}\\.aws'
-            cred_file = os.path.join(root_path, 'credentials')
-            config_file = os.path.join(root_path, 'config')
-
-            if not os.path.isdir(root_path):
-                os.mkdir(root_path)
-
-            if not os.path.isfile(cred_file):
-                with open(cred_file, 'w') as fh:
-                    fh.write(
-                        cred_template.format(
-                            self.access_key, self.secret_access_key
-                        )
-                    )
-
-            if not os.path.isfile(config_file):
-                with open(config_file, 'w') as fh:
-                    fh.write(
-                        config_template.format(
-                            self.region
-                        )
-                    )
+            if not self.region:
+                self.client = boto3.client('apigateway')
+            else:
+                self.client = boto3.client(
+                    'apigateway',
+                    region_name=self.region
+                )
+            self.client.get_account()
+            self.region = self.client._client_config.region_name
             return True
         except:
             return False
 
-    def clear_creds(self):
-        try:
-            root_path = f'{str(Path.home())}\\.aws'
-            if os.path.isdir(root_path):
-                shutil.rmtree(root_path)
-                return True
-        except:
-            return False
+    def load_creds(self) -> bool:
+        """Load credentials from AWS config and credentials files if present.
 
-    def load_creds(self):
-        if not any([self.access_key, self.secret_access_key]):
+        :return:
+        """
+        # If no access_key, secret_key, or profile name provided, try instance credentials
+        if not any([self.access_key, self.secret_access_key, self.profile_name]):
+            return self._try_instance_profile()
+        # Read in AWS config/credentials files if they exist
+        credentials = configparser.ConfigParser()
+        credentials.read(os.path.expanduser('~/.aws/credentials'))
+        config = configparser.ConfigParser()
+        config.read(os.path.expanduser('~/.aws/config'))
+        # If profile in files, try it, but flow through if it does not work
+        if self.profile_name in credentials and self.profile_name in config:
             try:
-                if not self.region:
-                    self.client = boto3.client('apigateway')
-                else:
-                    self.client = boto3.client(
-                        'apigateway',
-                        region_name=self.region
-                    )
+                self.client = boto3.session.Session(profile_name=self.profile_name).client('apigateway')
                 self.client.get_account()
-                self.region = self.client._client_config.region_name
                 return True
             except:
                 pass
-        elif self.access_key and self.secret_access_key:
+        # Maybe had profile, maybe didn't
+        if self.access_key and self.secret_access_key:
             try:
                 self.client = boto3.client(
                     'apigateway',
                     aws_access_key_id=self.access_key,
                     aws_secret_access_key=self.secret_access_key,
+                    aws_session_token=self.session_token,
                     region_name=self.region
                 )
                 self.client.get_account()
                 self.region = self.client._client_config.region_name
-                self.create_config()
+                # Save/overwrite config if profile specified
+                if self.profile_name:
+                    if self.profile_name not in config:
+                        config.add_section(self.profile_name)
+                    config[self.profile_name]['region'] = self.region
+                    with open(os.path.expanduser('~/.aws/config'), 'w') as file:
+                        config.write(file)
+                    if self.profile_name not in credentials:
+                        credentials.add_section(self.profile_name)
+                    credentials[self.profile_name]['aws_access_key_id'] = self.access_key
+                    credentials[self.profile_name]['aws_secret_access_key'] = self.secret_access_key
+                    if self.session_token:
+                        credentials[self.profile_name]['aws_session_token'] = self.session_token
+                    else:
+                        credentials.remove_option(self.profile_name, 'aws_session_token')
+                    with open(os.path.expanduser('~/.aws/credentials'), 'w') as file:
+                        credentials.write(file)
                 return True
             except:
-                pass
+                return False
         else:
             return False
 
@@ -341,11 +344,13 @@ def parse_arguments() -> Tuple[argparse.Namespace, str]:
     """
     parser = argparse.ArgumentParser(description='FireProx API Gateway Manager')
     parser.add_argument('--profile_name',
-                        help='AWS Profile Name to store/retrieve credentials', type=str, default='fireprox')
+                        help='AWS Profile Name to store/retrieve credentials', type=str, default=None)
     parser.add_argument('--access_key',
                         help='AWS Access Key', type=str, default=None)
     parser.add_argument('--secret_access_key',
                         help='AWS Secret Access Key', type=str, default=None)
+    parser.add_argument('--session_token',
+                        help='AWS Session Token', type=str, default=None)
     parser.add_argument('--region',
                         help='AWS Region', type=str, default=None)
     parser.add_argument('--command',
