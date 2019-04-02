@@ -73,7 +73,11 @@ class FireProx(object):
         config = configparser.ConfigParser()
         config.read(os.path.expanduser('~/.aws/config'))
         # If profile in files, try it, but flow through if it does not work
-        if self.profile_name in credentials and self.profile_name in config:
+        config_profile_section = f'profile {self.profile_name}'
+        if self.profile_name in credentials:
+            if config_profile_section not in config:
+                print(f'Please create a section for {self.profile_name} in your ~/.aws/config file')
+                return False
             try:
                 self.client = boto3.session.Session(profile_name=self.profile_name).client('apigateway')
                 self.client.get_account()
@@ -94,9 +98,9 @@ class FireProx(object):
                 self.region = self.client._client_config.region_name
                 # Save/overwrite config if profile specified
                 if self.profile_name:
-                    if self.profile_name not in config:
-                        config.add_section(self.profile_name)
-                    config[self.profile_name]['region'] = self.region
+                    if config_profile_section not in config:
+                        config.add_section(config_profile_section)
+                    config[config_profile_section]['region'] = self.region
                     with open(os.path.expanduser('~/.aws/config'), 'w') as file:
                         config.write(file)
                     if self.profile_name not in credentials:
