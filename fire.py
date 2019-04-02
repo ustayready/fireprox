@@ -78,6 +78,7 @@ class FireProx(object):
             if config_profile_section not in config:
                 print(f'Please create a section for {self.profile_name} in your ~/.aws/config file')
                 return False
+            self.region = config[config_profile_section].get('region', 'us-east-1')
             try:
                 self.client = boto3.session.Session(profile_name=self.profile_name).client('apigateway')
                 self.client.get_account()
@@ -152,6 +153,12 @@ class FireProx(object):
                     "in": "path",
                     "required": true,
                     "type": "string"
+                  },
+                  {
+                    "name": "X-My-X-Forwarded-For",
+                    "in": "header",
+                    "required": false,
+                    "type": "string"
                   }
                 ],
                 "responses": {},
@@ -163,7 +170,8 @@ class FireProx(object):
                     }
                   },
                   "requestParameters": {
-                    "integration.request.path.proxy": "method.request.path.proxy"
+                    "integration.request.path.proxy": "method.request.path.proxy",
+                    "integration.request.header.X-Forwarded-For": "method.request.header.X-My-X-Forwarded-For"
                   },
                   "passthroughBehavior": "when_no_match",
                   "httpMethod": "ANY",
@@ -186,6 +194,12 @@ class FireProx(object):
                     "in": "path",
                     "required": true,
                     "type": "string"
+                  },
+                  {
+                    "name": "X-My-X-Forwarded-For",
+                    "in": "header",
+                    "required": false,
+                    "type": "string"
                   }
                 ],
                 "responses": {},
@@ -197,7 +211,8 @@ class FireProx(object):
                     }
                   },
                   "requestParameters": {
-                    "integration.request.path.proxy": "method.request.path.proxy"
+                    "integration.request.path.proxy": "method.request.path.proxy",
+                    "integration.request.header.X-Forwarded-For": "method.request.header.X-My-X-Forwarded-For"
                   },
                   "passthroughBehavior": "when_no_match",
                   "httpMethod": "ANY",
