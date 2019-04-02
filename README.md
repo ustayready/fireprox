@@ -26,12 +26,15 @@ Being able to hide or continually rotate the source IP address when making web c
  * All HTTP methods supported
  * All parameters and URI's are passed through
  * Create, delete, list, or update proxies
+ * Spoof X-Forwarded-For source IP header by requesting with an X-My-X-Forwaded-For header
+ 
  
 ### Disclaimers ##
- * Source IP address is passed to the destination in the X-Forwarded-For header by AWS
-   * ($100 to the first person to figure out how to strip it in the AWS config before it reaches the destination LOL!)
+ * ~~Source IP address is passed to the destination in the X-Forwarded-For header by AWS~~
+   * ~~($100 to the first person to figure out how to strip it in the AWS config before it reaches the destination LOL!)~~
+   * Thanks to ![Fred Reimer](https://github.com/freimer) for the awesome X-Forwarded-For patch within 1 hour!
  * I am not responsible if you don't abide by the robots.txt :)
- * CloudFlare seems to sometimes detect X-Forwarded-For when blocking scrapers
+ * CloudFlare seems to sometimes detect X-Forwarded-For when blocking scrapers (**NEED TO TEST W/ NEW PATCH**)
  
 ## Basic Usage ##
 ### Requires AWS access key and secret access key or aws cli configured
