@@ -72,7 +72,7 @@ $ cd fireprox
 (fireprox) ~/fireprox$ python fire.py
 ```
 
-Note that Python 3 is required.
+Note that Python 3.6 is required.
 
 Building a Docker image: (Currently does not work on Docker for Windows, possibly due to line endings in entrypoint.sh.)
 ```bash
