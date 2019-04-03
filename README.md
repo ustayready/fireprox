@@ -74,11 +74,12 @@ $ cd fireprox
 
 Note that Python 3 is required.
 
-Building a Docker image:
+Building a Docker image: (Currently does not work on Docker for Windows, possibly due to line endings in entrypoint.sh.)
 ```bash
 $ git clone https://github.com/ustayready/fireprox
 $ cd fireprox
-$ docker build -t [name:tag] .
+$ docker build -t fireprox .
+$ docker run --rm -it fireprox -h
 ```
 
 ## Screenshots
