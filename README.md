@@ -26,7 +26,7 @@ Being able to hide or continually rotate the source IP address when making web c
  * All HTTP methods supported
  * All parameters and URI's are passed through
  * Create, delete, list, or update proxies
- * Spoof X-Forwarded-For source IP header by requesting with an X-My-X-Forwaded-For header
+ * Spoof X-Forwarded-For source IP header by requesting with an X-My-X-Forwarded-For header
  
  
 ### Disclaimers ##
