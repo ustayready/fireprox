@@ -4,6 +4,7 @@ FireProx
 	- [Benefits](#benefits)
 	- [Disclaimers](#disclaimers)
 - [Maintainer](#maintainer)
+- [Credit](#credit)
 - [Basic Usage](#basic-usage)
 - [Installation](#installation)
 - [Screenshots](#screenshots)
@@ -36,6 +37,15 @@ Being able to hide or continually rotate the source IP address when making web c
  * I am not responsible if you don't abide by the robots.txt :)
  * CloudFlare seems to sometimes detect X-Forwarded-For when blocking scrapers (**NEED TO TEST W/ NEW PATCH**)
  
+## Credit ##
+After releasing FireProx publicly, I learned two others were already using the AWS API Gateway technique. Researching the chain of events and having some great conversations, I came to the realization that the only reason I even knew about it was because of these people. I thought it would be cool to give them a few shout-outs and credit, follow these people -- they are awesome. 
+
+Credit goes to [Ryan Hanson - @ryHanson](https://twitter.com/ryHanson) who is the first known source of the API Gateway technique
+
+Shout-out to [Mike Hodges - @rmikehodges](https://twitter.com/rmikehodges) for making it public in ![hideNsneak](https://github.com/rmikehodges/hideNsneak) at BlackHat Arsenal 2018
+
+Major shout-out, once again, to my good friend [Ralph May - @ralphte1](https://twitter.com/ralphte1) for introducing me to the technique awhile back.
+
 ## Basic Usage ##
 ### Requires AWS access key and secret access key or aws cli configured
 usage: **fire.py** [-h] [--access_key ACCESS_KEY]
