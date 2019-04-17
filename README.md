@@ -36,7 +36,8 @@ Being able to hide or continually rotate the source IP address when making web c
    * Thanks to ![Fred Reimer](https://github.com/freimer) for the awesome X-Forwarded-For patch within 1 hour!
  * I am not responsible if you don't abide by the robots.txt :)
  * CloudFlare seems to sometimes detect X-Forwarded-For when blocking scrapers (**NEED TO TEST W/ NEW PATCH**)
- 
+ * Use of this tool on systems other than those that you own are likely to violate the AWS Acceptable Use Policy (https://aws.amazon.com/aup/) and could potentially lead to termination or suspension of your AWS account. Further, even use of this tool on systems that you do own, or have explicit permission to perform penetration testing on, is subject to the AWS policy on penetration testing (https://aws.amazon.com/security/penetration-testing/).
+
 ## Credit ##
 After releasing FireProx publicly, I learned two others were already using the AWS API Gateway technique. Researching the chain of events and having some great conversations, I came to the realization that the only reason I even knew about it was because of these people. I thought it would be cool to give them a few shout-outs and credit, follow these people -- they are awesome. 
 
