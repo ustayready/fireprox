@@ -153,12 +153,6 @@ class FireProx(object):
                     "in": "path",
                     "required": true,
                     "type": "string"
-                  },
-                  {
-                    "name": "X-My-X-Forwarded-For",
-                    "in": "header",
-                    "required": false,
-                    "type": "string"
                   }
                 ],
                 "responses": {},
@@ -171,7 +165,7 @@ class FireProx(object):
                   },
                   "requestParameters": {
                     "integration.request.path.proxy": "method.request.path.proxy",
-                    "integration.request.header.X-Forwarded-For": "method.request.header.X-My-X-Forwarded-For"
+                    "integration.request.header.X-Forwarded-For": "'127.0.0.1'"
                   },
                   "passthroughBehavior": "when_no_match",
                   "httpMethod": "ANY",
@@ -194,12 +188,6 @@ class FireProx(object):
                     "in": "path",
                     "required": true,
                     "type": "string"
-                  },
-                  {
-                    "name": "X-My-X-Forwarded-For",
-                    "in": "header",
-                    "required": false,
-                    "type": "string"
                   }
                 ],
                 "responses": {},
@@ -212,7 +200,7 @@ class FireProx(object):
                   },
                   "requestParameters": {
                     "integration.request.path.proxy": "method.request.path.proxy",
-                    "integration.request.header.X-Forwarded-For": "method.request.header.X-My-X-Forwarded-For"
+                    "integration.request.header.X-Forwarded-For": "'127.0.0.1'"
                   },
                   "passthroughBehavior": "when_no_match",
                   "httpMethod": "ANY",
