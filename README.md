@@ -70,6 +70,7 @@ optional arguments:
 * Examples
 	* examples/google.py: Use a FireProx proxy to scrape Google search.
 	* examples/bing.py: Use a FireProx proxy to scrape Bing search.
+	* examples/testip.py: Simply display the IP a fireprox used for a request
          
 ## Installation ##
 You can install and run with the following command:
