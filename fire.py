@@ -80,7 +80,8 @@ class FireProx(object):
                 return False
             self.region = config[config_profile_section].get('region', 'us-east-1')
             try:
-                self.client = boto3.session.Session(profile_name=self.profile_name).client('apigateway')
+                self.client = boto3.session.Session(profile_name=self.profile_name,
+                        region_name=self.region).client('apigateway')
                 self.client.get_account()
                 return True
             except:
