@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from multiprocessing import Pool
 from pathlib import Path
 import shutil
@@ -406,6 +407,11 @@ def main():
         result = fp.update_api(fp.api_id, fp.url)
         success = 'Success!' if result else 'Failed!'
         print(f'API Update Complete: {success}')
+
+    else:
+        print(f'[ERROR] Unsupported command: {args.command}\n')
+        print(help_text)
+        sys.exit(1)
 
 
 if __name__ == '__main__':
