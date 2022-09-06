@@ -55,12 +55,20 @@ usage: **fire.py** [-h] [--access_key ACCESS_KEY]
 
 FireProx API Gateway Manager
 ```
+usage: fire.py [-h] [--profile_name PROFILE_NAME] [--access_key ACCESS_KEY] [--secret_access_key SECRET_ACCESS_KEY] [--session_token SESSION_TOKEN] [--region REGION] [--command COMMAND] [--api_id API_ID] [--url URL]
+
+FireProx API Gateway Manager
+
 optional arguments:
   -h, --help            show this help message and exit
+  --profile_name PROFILE_NAME
+                        AWS Profile Name to store/retrieve credentials
   --access_key ACCESS_KEY
                         AWS Access Key
   --secret_access_key SECRET_ACCESS_KEY
                         AWS Secret Access Key
+  --session_token SESSION_TOKEN
+                        AWS Session Token
   --region REGION       AWS Region
   --command COMMAND     Commands: list, create, delete, update
   --api_id API_ID       API ID
