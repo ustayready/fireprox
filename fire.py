@@ -13,20 +13,20 @@ import json
 import configparser
 from typing import Tuple, Callable
 
+class FireProxException(Exception):
+    pass
 
 class FireProx(object):
-    def __init__(self, arguments: argparse.Namespace, help_text: str):
-        self.profile_name = arguments.profile_name
-        self.access_key = arguments.access_key
-        self.secret_access_key = arguments.secret_access_key
-        self.session_token = arguments.session_token
-        self.region = arguments.region
-        self.command = arguments.command
-        self.api_id = arguments.api_id
-        self.url = arguments.url
+    def __init__(self, **kwargs):
+        self.profile_name = None
+        self.command = None
+        self.access_key = None
+        self.secret_access_key = None
+        self.session_token = None
+        self.region = None
         self.api_list = []
         self.client = None
-        self.help = help_text
+        self.__dict__.update(kwargs)
 
         if self.access_key and self.secret_access_key:
             if not self.region:
@@ -34,9 +34,6 @@ class FireProx(object):
 
         if not self.load_creds():
             self.error('Unable to load AWS credentials')
-
-        if not self.command:
-            self.error('Please provide a valid command')
 
     def __str__(self):
         return 'FireProx()'
@@ -77,7 +74,7 @@ class FireProx(object):
         config_profile_section = f'profile {self.profile_name}'
         if self.profile_name in credentials:
             if config_profile_section not in config:
-                print(f'Please create a section for {self.profile_name} in your ~/.aws/config file')
+                self.error(f'Please create a section for {self.profile_name} in your ~/.aws/config file')
                 return False
             self.region = config[config_profile_section].get('region', 'us-east-1')
             try:
@@ -123,11 +120,9 @@ class FireProx(object):
             return False
 
     def error(self, error):
-        print(self.help)
-        sys.exit(error)
+        raise FireProxException(error)
 
-    def get_template(self):
-        url = self.url
+    def get_template(self, url):
         if url[-1] == '/':
             url = url[:-1]
 
@@ -239,9 +234,7 @@ class FireProx(object):
         if not url:
             self.error('Please provide a valid URL end-point')
 
-        print(f'Creating => {url}...')
-
-        template = self.get_template()
+        template = self.get_template(url)
         response = self.client.import_rest_api(
             parameters={
                 'endpointConfigurationTypes': 'REGIONAL'
@@ -249,7 +242,7 @@ class FireProx(object):
             body=template
         )
         resource_id, proxy_url = self.create_deployment(response['id'])
-        self.store_api(
+        return self.store_api(
             response['id'],
             response['name'],
             response['createdDate'],
@@ -268,7 +261,6 @@ class FireProx(object):
 
         resource_id = self.get_resource(api_id)
         if resource_id:
-            print(f'Found resource {resource_id} for {api_id}!')
             response = self.client.update_integration(
                 restApiId=api_id,
                 resourceId=resource_id,
@@ -299,6 +291,7 @@ class FireProx(object):
         return False
 
     def list_api(self, deleted_api_id=None):
+        results = []
         response = self.client.get_rest_apis()
         for item in response['items']:
             try:
@@ -308,15 +301,18 @@ class FireProx(object):
                 proxy_url = self.get_integration(api_id).replace('{proxy}', '')
                 url = f'https://{api_id}.execute-api.{self.region}.amazonaws.com/fireprox/'
                 if not api_id == deleted_api_id:
-                    print(f'[{created_dt}] ({api_id}) {name}: {url} => {proxy_url}')
+                    results.append(f'[{created_dt}] ({api_id}) {name}: {url} => {proxy_url}')
             except:
                 pass
 
-        return response['items']
+        if deleted_api_id:
+            return response['items']
+        else:
+            return results
 
     def store_api(self, api_id, name, created_dt, version_dt, url,
                   resource_id, proxy_url):
-        print(
+        return(
             f'[{created_dt}] ({api_id}) {name} => {proxy_url} ({url})'
         )
 
@@ -389,29 +385,41 @@ def main():
     :return:
     """
     args, help_text = parse_arguments()
-    fp = FireProx(args, help_text)
-    if args.command == 'list':
-        print(f'Listing API\'s...')
-        result = fp.list_api()
 
-    elif args.command == 'create':
-        result = fp.create_api(fp.url)
+    try:
+        if not args.command:
+            raise FireProxException('Please provide a valid command')
 
-    elif args.command == 'delete':
-        result = fp.delete_api(fp.api_id)
-        success = 'Success!' if result else 'Failed!'
-        print(f'Deleting {fp.api_id} => {success}')
+        fp = FireProx(**vars(args))
+        if args.command == 'list':
+            print(f'Listing API\'s...')
+            results = fp.list_api()
+            for result in results:
+                print(result)
 
-    elif args.command == 'update':
-        print(f'Updating {fp.api_id} => {fp.url}...')
-        result = fp.update_api(fp.api_id, fp.url)
-        success = 'Success!' if result else 'Failed!'
-        print(f'API Update Complete: {success}')
+        elif args.command == 'create':
+            if not args.url:
+                raise FireProxException('Please provide a valid URL end-point')
+            print(f'Creating => {args.url}...')
+            result = fp.create_api(fp.url)
+            print(result)
 
-    else:
-        print(f'[ERROR] Unsupported command: {args.command}\n')
+        elif args.command == 'delete':
+            result = fp.delete_api(fp.api_id)
+            success = 'Success!' if result else 'Failed!'
+            print(f'Deleting {fp.api_id} => {success}')
+
+        elif args.command == 'update':
+            print(f'Updating {fp.api_id} => {fp.url}...')
+            result = fp.update_api(fp.api_id, fp.url)
+            success = 'Success!' if result else 'Failed!'
+            print(f'API Update Complete: {success}')
+
+        else:
+            raise FireProxException(f'[ERROR] Unsupported command: {args.command}')
+    except FireProxException as ex:
         print(help_text)
-        sys.exit(1)
+        sys.exit(ex)
 
 
 if __name__ == '__main__':
