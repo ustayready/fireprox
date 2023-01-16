@@ -6,13 +6,33 @@ import tldextract
 import boto3
 import os
 import sys
+import random
 import datetime
 import tzlocal
 import argparse
 import json
 import configparser
-from typing import Tuple, Callable
+from typing import Tuple, List, Union, Any, Callable
 
+AWS_DEFAULT_REGIONS = [
+    "ap-south-1",
+    "eu-north-1",
+    "eu-west-3",
+    "eu-west-2",
+    "eu-west-1",
+    "ap-northeast-3",
+    "ap-northeast-2",
+    "ap-northeast-1",
+    "ca-central-1",
+    "sa-east-1",
+    "ap-southeast-1",
+    "ap-southeast-2",
+    "eu-central-1",
+    "us-east-1",
+    "us-east-2",
+    "us-west-1",
+    "us-west-2"
+]
 
 class FireProx(object):
     def __init__(self, arguments: argparse.Namespace, help_text: str):
@@ -76,10 +96,12 @@ class FireProx(object):
         # If profile in files, try it, but flow through if it does not work
         config_profile_section = f'profile {self.profile_name}'
         if self.profile_name in credentials:
-            if config_profile_section not in config:
-                print(f'Please create a section for {self.profile_name} in your ~/.aws/config file')
+            if config_profile_section not in config and self.region is None:
+                print(f'Please create a section for {self.profile_name} in your ~/.aws/config file or provide region')
                 return False
-            self.region = config[config_profile_section].get('region', 'us-east-1')
+            # if region is not set, load it from config
+            if self.region is None:
+                self.region = config[config_profile_section].get('region', 'us-east-1')
             try:
                 self.client = boto3.session.Session(profile_name=self.profile_name,
                         region_name=self.region).client('apigateway')
@@ -98,7 +120,8 @@ class FireProx(object):
                     region_name=self.region
                 )
                 self.client.get_account()
-                self.region = self.client._client_config.region_name
+                if self.region is None:
+                    self.region = self.client._client_config.region_name
                 # Save/overwrite config if profile specified
                 if self.profile_name:
                     if config_profile_section not in config:
@@ -298,8 +321,10 @@ class FireProx(object):
                 return True
         return False
 
-    def list_api(self, deleted_api_id=None):
+    def list_api(self, deleted_api_id=None, deleting=False):
         response = self.client.get_rest_apis()
+        if deleting:
+            return response['items']
         for item in response['items']:
             try:
                 created_dt = item['createdDate']
@@ -383,18 +408,68 @@ def parse_arguments() -> Tuple[argparse.Namespace, str]:
     return parser.parse_args(), parser.format_help()
 
 
+def parse_region(region:  str | List, mode: str = "all")-> Union[str, List, None]:
+    """Parse 'region' and return the final region or set of regions according
+    to mode
+    """
+    if region is None:
+        return None
+    if mode not in ['all', 'random']:
+        raise ValueError(f"mode should one of ['all', 'random']")
+
+    elif isinstance(region, str):
+        # if region is a file containing regions, read from it
+        if os.path.isfile(region):
+            with open(region) as f:
+                regions = [reg.strip() for reg in f.readlines()]
+                if mode == "random":
+                    return random.choice(regions)
+                elif mode == "all":
+                    return regions
+        elif ',' in region:
+            regions = region.split(sep=',')
+            if mode == "random":
+                return random.choice(regions)
+            else:
+                return regions
+        else:
+            return region
+
+    elif isinstance(region, list):
+        if mode == "all":
+            return region
+        elif mode == "random":
+            return random.choice(region)
+
+
 def main():
     """Run the main program
 
     :return:
     """
     args, help_text = parse_arguments()
-    fp = FireProx(args, help_text)
+    #fp = FireProx(args, help_text)
     if args.command == 'list':
-        print(f'Listing API\'s...')
-        result = fp.list_api()
+        region_parsed = parse_region(args.region)
+        if isinstance(region_parsed, list):
+            for region in region_parsed:
+                args.region = region
+                fp = FireProx(args, help_text)
+                print(f'Listing API\'s from {fp.region}...')
+                result = fp.list_api(deleting=False)
+        else:
+            args.region = region_parsed
+            fp = FireProx(args, help_text)
+            print(f'Listing API\'s from {fp.region}...')
+            result = fp.list_api(deleting=False)
 
     elif args.command == 'create':
+        if args.region is not None:
+            # if region is a file containing regions, choose one randomly
+            if os.path.isfile(args.region):
+                with open(args.region) as f:
+                    regions = [reg.strip() for reg in f.readlines()]
+                    self.region = random.choice(regions)
         result = fp.create_api(fp.url)
 
     elif args.command == 'delete':
