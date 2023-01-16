@@ -400,7 +400,7 @@ def parse_arguments() -> Tuple[argparse.Namespace, str]:
     parser.add_argument('--region',
                         help='AWS Region', type=str, default=None)
     parser.add_argument('--command',
-                        help='Commands: list, create, delete, update', type=str, default=None)
+                        help='Commands: list, list_all, create, delete, update', type=str, default=None)
     parser.add_argument('--api_id',
                         help='API ID', type=str, required=False)
     parser.add_argument('--url',
@@ -459,6 +459,13 @@ def main():
                 result = fp.list_api(deleting=False)
         else:
             args.region = region_parsed
+            fp = FireProx(args, help_text)
+            print(f'Listing API\'s from {fp.region}...')
+            result = fp.list_api(deleting=False)
+
+    elif args.command == "list_all":
+        for region in AWS_DEFAULT_REGIONS:
+            args.region = region
             fp = FireProx(args, help_text)
             print(f'Listing API\'s from {fp.region}...')
             result = fp.list_api(deleting=False)
