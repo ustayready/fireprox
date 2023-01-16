@@ -546,6 +546,11 @@ def main():
 
 
     elif args.command == 'update':
+        region_parsed = parse_region(args.region)
+        if isinstance(region_parsed, list):
+            print(f'[ERROR] More than one region provided for command \'update\'\n')
+            sys.exit(1)
+        fp = FireProx(args, help_text)
         print(f'Updating {fp.api_id} => {fp.url}...')
         result = fp.update_api(fp.api_id, fp.url)
         success = 'Success!' if result else 'Failed!'
