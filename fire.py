@@ -274,6 +274,7 @@ class FireProx(object):
             body=template
         )
         resource_id, proxy_url = self.create_deployment(response['id'])
+        result = {"id":response['id'],"proxy_url":proxy_url}
         self.store_api(
             response['id'],
             response['name'],
@@ -283,6 +284,8 @@ class FireProx(object):
             resource_id,
             proxy_url
         )
+        return result
+
 
     def update_api(self, api_id, url):
         if not any([api_id, url]):
@@ -469,7 +472,6 @@ def main():
     :return:
     """
     args, help_text = parse_arguments()
-    #fp = FireProx(args, help_text)
     if args.command == 'list':
         region_parsed = parse_region(args.region)
         if isinstance(region_parsed, list):
@@ -494,12 +496,9 @@ def main():
 
 
     elif args.command == 'create':
-        if args.region is not None:
-            # if region is a file containing regions, choose one randomly
-            if os.path.isfile(args.region):
-                with open(args.region) as f:
-                    regions = [reg.strip() for reg in f.readlines()]
-                    self.region = random.choice(regions)
+        region_parsed = parse_region(args.region, mode="random")
+        args.region = region_parsed
+        fp = FireProx(args, help_text)
         result = fp.create_api(fp.url)
 
 
