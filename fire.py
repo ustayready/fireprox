@@ -314,6 +314,7 @@ class FireProx(object):
         if not api_id:
             self.error('Please provide a valid API ID')
         retry = 3
+        sleep_time = 3
         success = False
         error_msg = 'Generic error'
         while retry > 0 and not success:
@@ -327,7 +328,8 @@ class FireProx(object):
                     break
                 elif err.response['Error']['Code'] == 'TooManyRequestsException':
                     error_msg = 'Too many requests'
-                    sleep(1)
+                    sleep(sleep_time)
+                    sleep_time *= 2
                 else:
                     error_msg = err.response['Error']['Message']
             except BaseException as e:
@@ -536,9 +538,11 @@ def main():
                     print(f'No API found')
                 else:
                     for api in current_apis:
-                        result = fp.delete_api(api_id=api['id'])
-                        success = 'Success!' if result else 'Failed!'
-                        print(f'Deleting {api["id"]} => {success}')
+                        result, msg = fp.delete_api(api_id=api['id'])
+                        if result:
+                            print(f'Deleting {api["id"]} => Success!')
+                        else:
+                            print(f'Deleting {api["id"]} => Failed! ({msg})')
 
 
     elif args.command == 'update':
