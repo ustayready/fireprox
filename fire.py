@@ -422,7 +422,7 @@ def parse_arguments() -> Tuple[argparse.Namespace, str]:
     parser.add_argument('--session_token',
                         help='AWS Session Token', type=str, default=None)
     parser.add_argument('--region',
-                        help='AWS Region', type=str, default=None)
+                        help='AWS Regions (accepts single region, comma-separated list of regions or file containing regions)', type=str, default=None)
     parser.add_argument('--command',
                         help='Commands: list, list_all, create, delete, prune, update', type=str, default=None)
     parser.add_argument('--api_id',
