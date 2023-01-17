@@ -4,15 +4,37 @@ from pathlib import Path
 import shutil
 import tldextract
 import boto3
+import botocore
 import os
 import sys
+import random
 import datetime
 import tzlocal
 import argparse
 import json
 import configparser
-from typing import Tuple, Callable
+from typing import Tuple, List, Union, Any, Callable
+from time import sleep
 
+AWS_DEFAULT_REGIONS = [
+    "ap-south-1",
+    "eu-north-1",
+    "eu-west-3",
+    "eu-west-2",
+    "eu-west-1",
+    "ap-northeast-3",
+    "ap-northeast-2",
+    "ap-northeast-1",
+    "ca-central-1",
+    "sa-east-1",
+    "ap-southeast-1",
+    "ap-southeast-2",
+    "eu-central-1",
+    "us-east-1",
+    "us-east-2",
+    "us-west-1",
+    "us-west-2"
+]
 
 class FireProx(object):
     def __init__(self, arguments: argparse.Namespace, help_text: str):
@@ -76,10 +98,12 @@ class FireProx(object):
         # If profile in files, try it, but flow through if it does not work
         config_profile_section = f'profile {self.profile_name}'
         if self.profile_name in credentials:
-            if config_profile_section not in config:
-                print(f'Please create a section for {self.profile_name} in your ~/.aws/config file')
+            if config_profile_section not in config and self.region is None:
+                print(f'Please create a section for {self.profile_name} in your ~/.aws/config file or provide region')
                 return False
-            self.region = config[config_profile_section].get('region', 'us-east-1')
+            # if region is not set, load it from config
+            if self.region is None:
+                self.region = config[config_profile_section].get('region', 'us-east-1')
             try:
                 self.client = boto3.session.Session(profile_name=self.profile_name,
                         region_name=self.region).client('apigateway')
@@ -98,7 +122,8 @@ class FireProx(object):
                     region_name=self.region
                 )
                 self.client.get_account()
-                self.region = self.client._client_config.region_name
+                if self.region is None:
+                    self.region = self.client._client_config.region_name
                 # Save/overwrite config if profile specified
                 if self.profile_name:
                     if config_profile_section not in config:
@@ -249,6 +274,7 @@ class FireProx(object):
             body=template
         )
         resource_id, proxy_url = self.create_deployment(response['id'])
+        result = {"id":response['id'],"proxy_url":proxy_url}
         self.store_api(
             response['id'],
             response['name'],
@@ -258,6 +284,8 @@ class FireProx(object):
             resource_id,
             proxy_url
         )
+        return result
+
 
     def update_api(self, api_id, url):
         if not any([api_id, url]):
@@ -288,18 +316,39 @@ class FireProx(object):
     def delete_api(self, api_id):
         if not api_id:
             self.error('Please provide a valid API ID')
-        items = self.list_api(api_id)
-        for item in items:
-            item_api_id = item['id']
-            if item_api_id == api_id:
+        retry = 3
+        sleep_time = 3
+        success = False
+        error_msg = 'Generic error'
+        while retry > 0 and not success:
+            try:
                 response = self.client.delete_rest_api(
                     restApiId=api_id
                 )
-                return True
-        return False
+            except botocore.exceptions.ClientError as err:
+                if err.response['Error']['Code'] == 'NotFoundException':
+                    error_msg = 'API not found'
+                    break
+                elif err.response['Error']['Code'] == 'TooManyRequestsException':
+                    error_msg = 'Too many requests'
+                    sleep(sleep_time)
+                    sleep_time *= 2
+                else:
+                    error_msg = err.response['Error']['Message']
+            except BaseException as e:
+                error_msg = 'Generic error'
+            else:
+                success = True
+                error_msg = ''
+            finally:
+                retry -= 1
+        return success, error_msg
 
-    def list_api(self, deleted_api_id=None):
+
+    def list_api(self, deleted_api_id=None, deleting=False):
         response = self.client.get_rest_apis()
+        if deleting:
+            return response['items']
         for item in response['items']:
             try:
                 created_dt = item['createdDate']
@@ -375,12 +424,46 @@ def parse_arguments() -> Tuple[argparse.Namespace, str]:
     parser.add_argument('--region',
                         help='AWS Region', type=str, default=None)
     parser.add_argument('--command',
-                        help='Commands: list, create, delete, update', type=str, default=None)
+                        help='Commands: list, list_all, create, delete, prune, update', type=str, default=None)
     parser.add_argument('--api_id',
                         help='API ID', type=str, required=False)
     parser.add_argument('--url',
                         help='URL end-point', type=str, required=False)
     return parser.parse_args(), parser.format_help()
+
+
+def parse_region(region:  str | List, mode: str = "all")-> Union[str, List, None]:
+    """Parse 'region' and return the final region or set of regions according
+    to mode
+    """
+    if region is None:
+        return None
+    if mode not in ['all', 'random']:
+        raise ValueError(f"mode should one of ['all', 'random']")
+
+    elif isinstance(region, str):
+        # if region is a file containing regions, read from it
+        if os.path.isfile(region):
+            with open(region) as f:
+                regions = [reg.strip() for reg in f.readlines()]
+                if mode == "random":
+                    return random.choice(regions)
+                elif mode == "all":
+                    return regions
+        elif ',' in region:
+            regions = region.split(sep=',')
+            if mode == "random":
+                return random.choice(regions)
+            else:
+                return regions
+        else:
+            return region
+
+    elif isinstance(region, list):
+        if mode == "all":
+            return region
+        elif mode == "random":
+            return random.choice(region)
 
 
 def main():
@@ -389,24 +472,89 @@ def main():
     :return:
     """
     args, help_text = parse_arguments()
-    fp = FireProx(args, help_text)
     if args.command == 'list':
-        print(f'Listing API\'s...')
-        result = fp.list_api()
+        region_parsed = parse_region(args.region)
+        if isinstance(region_parsed, list):
+            for region in region_parsed:
+                args.region = region
+                fp = FireProx(args, help_text)
+                print(f'Listing API\'s from {fp.region}...')
+                result = fp.list_api(deleting=False)
+        else:
+            args.region = region_parsed
+            fp = FireProx(args, help_text)
+            print(f'Listing API\'s from {fp.region}...')
+            result = fp.list_api(deleting=False)
+
+
+    elif args.command == "list_all":
+        for region in AWS_DEFAULT_REGIONS:
+            args.region = region
+            fp = FireProx(args, help_text)
+            print(f'Listing API\'s from {fp.region}...')
+            result = fp.list_api(deleting=False)
+
 
     elif args.command == 'create':
+        region_parsed = parse_region(args.region, mode="random")
+        args.region = region_parsed
+        fp = FireProx(args, help_text)
         result = fp.create_api(fp.url)
 
+
     elif args.command == 'delete':
-        result = fp.delete_api(fp.api_id)
-        success = 'Success!' if result else 'Failed!'
-        print(f'Deleting {fp.api_id} => {success}')
+        region_parsed = parse_region(args.region)
+        if region_parsed is None or isinstance(region_parsed, str):
+            args.region = region_parsed
+            fp = FireProx(args, help_text)
+            result, msg = fp.delete_api(fp.api_id)
+            if result:
+                print(f'Deleting {fp.api_id} => Success!')
+            else:
+                print(f'Deleting {fp.api_id} => Failed! ({msg})')
+        else:
+            print(f'[ERROR] More than one region provided for command \'delete\'\n')
+            sys.exit(1)
+
+
+    elif args.command == 'prune':
+        region_parsed = parse_region(args.region)
+        if region_parsed is None:
+            region_parsed = AWS_DEFAULT_REGIONS
+        if isinstance(region_parsed, str):
+            region_parsed = [region_parsed]
+        while True:
+            choice = input(f"This will delete ALL APIs from region(s): {','.join(region_parsed)}. Proceed? [y/N] ") or 'N'
+            if choice.upper() in ['Y', 'N']:
+                break
+        if choice.upper() == 'Y':
+            for region in region_parsed:
+                args.region = region
+                fp = FireProx(args, help_text)
+                print(f'Retrieving API\'s from {region}...')
+                current_apis = fp.list_api(deleting=True)
+                if len(current_apis) == 0:
+                    print(f'No API found')
+                else:
+                    for api in current_apis:
+                        result, msg = fp.delete_api(api_id=api['id'])
+                        if result:
+                            print(f'Deleting {api["id"]} => Success!')
+                        else:
+                            print(f'Deleting {api["id"]} => Failed! ({msg})')
+
 
     elif args.command == 'update':
+        region_parsed = parse_region(args.region)
+        if isinstance(region_parsed, list):
+            print(f'[ERROR] More than one region provided for command \'update\'\n')
+            sys.exit(1)
+        fp = FireProx(args, help_text)
         print(f'Updating {fp.api_id} => {fp.url}...')
         result = fp.update_api(fp.api_id, fp.url)
         success = 'Success!' if result else 'Failed!'
         print(f'API Update Complete: {success}')
+
 
     else:
         print(f'[ERROR] Unsupported command: {args.command}\n')
