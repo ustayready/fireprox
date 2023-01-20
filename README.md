@@ -18,7 +18,7 @@ Being able to hide or continually rotate the source IP address when making web c
 ![Black Hills Information Security](https://www.blackhillsinfosec.com/wp-content/uploads/2016/03/BHIS-logo-L-300x300.png "Black Hills Information Security")
 
 ## Maintainer
-- Follow me on Twitter for more tips, tricks, and tools (or just to say hi)! ([Mike Felch - @ustayready](https://twitter.com/ustayready)) 
+- Follow me on Twitter for more tips, tricks, and tools (or just to say hi)! ([Mike Felch - @ustayready](https://twitter.com/ustayready))
 
 ### Benefits ##
 
@@ -28,8 +28,8 @@ Being able to hide or continually rotate the source IP address when making web c
  * All parameters and URI's are passed through
  * Create, delete, list, or update proxies
  * Spoof X-Forwarded-For source IP header by requesting with an X-My-X-Forwarded-For header
- 
- 
+
+
 ### Disclaimers ##
  * ~~Source IP address is passed to the destination in the X-Forwarded-For header by AWS~~
    * ~~($100 to the first person to figure out how to strip it in the AWS config before it reaches the destination LOL!)~~
@@ -39,7 +39,7 @@ Being able to hide or continually rotate the source IP address when making web c
  * Use of this tool on systems other than those that you own are likely to violate the [AWS Acceptable Use Policy](https://aws.amazon.com/aup/) and could potentially lead to termination or suspension of your AWS account. Further, even use of this tool on systems that you do own, or have explicit permission to perform penetration testing on, is subject to the AWS policy on [penetration testing](https://aws.amazon.com/security/penetration-testing/).
 
 ## Credit ##
-After releasing FireProx publicly, I learned two others were already using the AWS API Gateway technique. Researching the chain of events and having some great conversations, I came to the realization that the only reason I even knew about it was because of these people. I thought it would be cool to give them a few shout-outs and credit, follow these people -- they are awesome. 
+After releasing FireProx publicly, I learned two others were already using the AWS API Gateway technique. Researching the chain of events and having some great conversations, I came to the realization that the only reason I even knew about it was because of these people. I thought it would be cool to give them a few shout-outs and credit, follow these people -- they are awesome.
 
 Credit goes to [Ryan Hanson - @ryHanson](https://twitter.com/ryHanson) who is the first known source of the API Gateway technique
 
@@ -48,18 +48,19 @@ Shout-out to [Mike Hodges - @rmikehodges](https://twitter.com/rmikehodges) for m
 Major shout-out, once again, to my good friend [Ralph May - @ralphte1](https://twitter.com/ralphte1) for introducing me to the technique awhile back.
 
 ## Basic Usage ##
-### Requires AWS access key and secret access key or aws cli configured
+##### Requires AWS access key and secret access key or aws cli configured
 usage: **fire.py** [-h] [--access_key ACCESS_KEY]
                [--secret_access_key SECRET_ACCESS_KEY] [--region REGION]
                [--command COMMAND] [--api_id API_ID] [--url URL]
 
 FireProx API Gateway Manager
 ```
-usage: fire.py [-h] [--profile_name PROFILE_NAME] [--access_key ACCESS_KEY] [--secret_access_key SECRET_ACCESS_KEY] [--session_token SESSION_TOKEN] [--region REGION] [--command COMMAND] [--api_id API_ID] [--url URL]
+usage: fire.py[-h] [--profile_name PROFILE_NAME] [--access_key ACCESS_KEY] [--secret_access_key SECRET_ACCESS_KEY] [--session_token SESSION_TOKEN]
+               [--region REGION] [--command COMMAND] [--api_id API_ID] [--url URL]
 
 FireProx API Gateway Manager
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --profile_name PROFILE_NAME
                         AWS Profile Name to store/retrieve credentials
@@ -69,8 +70,8 @@ optional arguments:
                         AWS Secret Access Key
   --session_token SESSION_TOKEN
                         AWS Session Token
-  --region REGION       AWS Region
-  --command COMMAND     Commands: list, create, delete, update
+  --region REGION       AWS Regions (accepts single region, comma-separated list of regions or file containing regions)
+  --command COMMAND     Commands: list, list_all, create, delete, prune, update
   --api_id API_ID       API ID
   --url URL             URL end-point
 ```
@@ -78,7 +79,50 @@ optional arguments:
 * Examples
 	* examples/google.py: Use a FireProx proxy to scrape Google search.
 	* examples/bing.py: Use a FireProx proxy to scrape Bing search.
-         
+
+### CLI Usage Examples
+
+#### List all APIs from default regions using an AWS profile
+```
+fire.py --profile_name myprofile --command list_all
+```
+Example of output:
+```
+Listing API's from ap-south-1...
+Listing API's from eu-north-1...
+Listing API's from eu-west-3...
+Listing API's from eu-west-2...
+Listing API's from eu-west-1...
+Listing API's from ap-northeast-3...
+Listing API's from ap-northeast-2...
+Listing API's from ap-northeast-1...
+Listing API's from ca-central-1...
+Listing API's from sa-east-1...
+Listing API's from ap-southeast-1...
+Listing API's from ap-southeast-2...
+Listing API's from eu-central-1...
+Listing API's from us-east-1...
+Listing API's from us-east-2...
+Listing API's from us-west-1...
+Listing API's from us-west-2...
+```
+
+#### Remove ALL APIs from regions defined in a text file (one per line)
+```
+fire.py --command prune --region aws-regions.txt
+```
+A confirmation will be required before proceeding:
+```
+This will delete ALL APIs from region(s): ap-south-1,eu-north-1,eu-west-3,eu-west-2,eu-west-1,
+ap-northeast-3,ap-northeast-2,ap-northeast-1,ca-central-1,sa-east-1,ap-southeast-1,
+ap-southeast-2,eu-central-1,us-east-1,us-east-2,us-west-1,us-west-2. Proceed? [y/N]
+```
+
+#### Create a new API in a random region from a list of regions
+```
+fire.py --profile_name myprofile --command create --url https://example.com --region aws-regions.txt
+```
+
 ## Installation ##
 You can install and run with the following command:
 
