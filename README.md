@@ -73,6 +73,7 @@ optional arguments:
   --command COMMAND     Commands: list, create, delete, update
   --api_id API_ID       API ID
   --url URL             URL end-point
+  --urls URLS           URL end-points (space separated)
 ```
 
 * Examples

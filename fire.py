@@ -12,6 +12,11 @@ import argparse
 import json
 import configparser
 from typing import Tuple, Callable
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("FireProx")
+
 
 
 class FireProx(object):
@@ -24,6 +29,7 @@ class FireProx(object):
         self.command = arguments.command
         self.api_id = arguments.api_id
         self.url = arguments.url
+        self.urls = arguments.urls
         self.api_list = []
         self.client = None
         self.help = help_text
@@ -77,7 +83,7 @@ class FireProx(object):
         config_profile_section = f'profile {self.profile_name}'
         if self.profile_name in credentials:
             if config_profile_section not in config:
-                print(f'Please create a section for {self.profile_name} in your ~/.aws/config file')
+                logger.info(f' Please create a section for {self.profile_name} in your ~/.aws/config file')
                 return False
             self.region = config[config_profile_section].get('region', 'us-east-1')
             try:
@@ -123,11 +129,12 @@ class FireProx(object):
             return False
 
     def error(self, error):
-        print(self.help)
+        logger.infoA(self.help)
         sys.exit(error)
 
-    def get_template(self):
-        url = self.url
+    def get_template(self, url):
+        """Get the swagger template for a given url"""
+        logger.info(f'Getting template for {url}')
         if url[-1] == '/':
             url = url[:-1]
 
@@ -229,46 +236,90 @@ class FireProx(object):
           }
         }
         '''
-        template = template.replace('{{url}}', url)
+        template = template.replace('{{url}}', f'https://{url}')
+
         template = template.replace('{{title}}', title)
         template = template.replace('{{version_date}}', version_date)
 
         return str.encode(template)
 
-    def create_api(self, url):
+    def create_api(self, urls):
+        """Create API Gateway for a given url"""
+        logger.info(f'Creating API Gateway for {urls}')
+        if not urls or not isinstance(urls, list):
+            self.error('Please provide a list of valid URL end-points')
+
+        api_gateways = {}
+
+        if os.path.exists('endpoints.json'):
+            with open('endpoints.json', 'r') as infile:
+                api_gateways = json.load(infile)
+
+        for url in urls:
+            if url not in api_gateways:
+                print(f'Creating => {url}...')
+
+                template = self.get_template(url)
+                response = self.client.import_rest_api(
+                    parameters={
+                        'endpointConfigurationTypes': 'REGIONAL'
+                    },
+                    body=template
+                )
+                resource_id, proxy_url = self.create_deployment(response['id'])
+                api_gateway_info = {
+                    'api_id': response['id'],
+                    'name': response['name'],
+                    'created_dt': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'version': response['version'],
+                    'url': url,
+                    'resource_id': resource_id,
+                    'proxy_url': proxy_url
+                }
+                self.store_api(api_gateways, **api_gateway_info)
+                api_gateways[url] = api_gateway_info
+
+        with open('endpoints.json', 'w') as outfile:
+            json.dump(api_gateways, outfile)
+
+
+    def update_api(self, api_id=None, url=None):
         if not url:
-            self.error('Please provide a valid URL end-point')
+            # If URL is not provided, prompt user for URL
+            url = input("Enter the URL to update: ")
 
-        print(f'Creating => {url}...')
-
-        template = self.get_template()
-        response = self.client.import_rest_api(
-            parameters={
-                'endpointConfigurationTypes': 'REGIONAL'
-            },
-            body=template
-        )
-        resource_id, proxy_url = self.create_deployment(response['id'])
-        self.store_api(
-            response['id'],
-            response['name'],
-            response['createdDate'],
-            response['version'],
-            url,
-            resource_id,
-            proxy_url
-        )
-
-    def update_api(self, api_id, url):
-        if not any([api_id, url]):
-            self.error('Please provide a valid API ID and URL end-point')
+    # Ensure the URL includes the 'https://' or 'http://' scheme
+        if not url.startswith(('http://', 'https://')):
+            url = 'https://' + url
 
         if url[-1] == '/':
             url = url[:-1]
 
+        if not api_id:
+            # If API ID is not provided, check if URL exists in endpoints.json
+            api_gateways = {}
+            if os.path.exists('endpoints.json'):
+                with open('endpoints.json', 'r') as infile:
+                    api_gateways = json.load(infile)
+            
+            if url in api_gateways:
+                api_id = api_gateways[url]['api_id']
+            else:
+                # URL not found in endpoints.json, list fireprox_ APIs and ask for API ID
+                logger.info('URL not found in endpoints.json')
+                logger.info('Retrieving API Gateway IDs from the current AWS account:')
+                response = self.client.get_rest_apis()
+                for item in response['items']:
+                    if item['name'].startswith('fireprox_'):
+                        logger.info(f"API ID: {item['id']}, API Name: {item['name']}")
+                api_id = input("Enter the API ID to update: ")
+
+        if not api_id:
+            self.error('No valid API ID provided')
+
         resource_id = self.get_resource(api_id)
         if resource_id:
-            print(f'Found resource {resource_id} for {api_id}!')
+            logger.info(f'Found resource {resource_id} for {api_id}!')
             response = self.client.update_integration(
                 restApiId=api_id,
                 resourceId=resource_id,
@@ -285,40 +336,98 @@ class FireProx(object):
         else:
             self.error(f'Unable to update, no valid resource for {api_id}')
 
-    def delete_api(self, api_id):
-        if not api_id:
-            self.error('Please provide a valid API ID')
-        items = self.list_api(api_id)
-        for item in items:
-            item_api_id = item['id']
-            if item_api_id == api_id:
-                response = self.client.delete_rest_api(
-                    restApiId=api_id
-                )
-                return True
-        return False
+    def delete_api(self, urls):
+        if not urls or not isinstance(urls, list):
+            self.error('Please provide a list of valid URLs')
+
+        # Load the existing API Gateways from the 'endpoints.json' file
+        api_gateways = {}
+        try:
+            with open('endpoints.json', 'r') as infile:
+                api_gateways = json.load(infile)
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+
+        # List to store API IDs to be deleted
+        api_ids_to_delete = []
+
+        for url in urls:
+            # Add 'https://' to the URL if it doesn't have it
+            if not url.startswith('https://'):
+                url = 'https://' + url
+
+            # Check if the URL exists in the 'endpoints.json' file
+            if url in api_gateways:
+                api_id = api_gateways[url]['api_id']
+                api_ids_to_delete.append(api_id)
+            else:
+                # URL not found in 'endpoints.json', need to retrieve from AWS account
+                logger.info(f' URL not found in endpoints.json: {url}')
+                logger.info(' Available API Endpoints:')
+                response = self.client.get_rest_apis()
+                for item in response['items']:
+                    if item['name'].startswith('fireprox_'):
+                        logger.info(f" API ID: {item['id']}, API Name: {item['name']}")
+                user_api_id = input('Enter the API ID you want to delete (or type "skip" to skip): ')
+                if user_api_id.lower() != 'skip':
+                    api_ids_to_delete.append(user_api_id)
+
+        # Delete the API Gateways using the collected API IDs
+        success_count = 0
+        total_count = len(api_ids_to_delete)
+        for api_id in api_ids_to_delete:
+            try:
+                response = self.client.delete_rest_api(restApiId=api_id)
+                success_count += 1
+                # Remove the deleted API from 'endpoints.json' file
+                url_to_remove = next((url for url, info in api_gateways.items() if info['api_id'] == api_id), None)
+                if url_to_remove:
+                    del api_gateways[url_to_remove]
+            except Exception as e:
+                logger.info(f" Failed to delete API ID: {api_id}. Error: {e}")
+
+        # Update the 'endpoints.json' file
+        with open('endpoints.json', 'w') as outfile:
+            json.dump(api_gateways, outfile)
+
+        if success_count == total_count:
+            return True
+        else:
+            return False
 
     def list_api(self, deleted_api_id=None):
         response = self.client.get_rest_apis()
         for item in response['items']:
             try:
-                created_dt = item['createdDate']
+                created_dt = item['createdDate'].strftime('%Y-%m-%d %H:%M:%S')
                 api_id = item['id']
                 name = item['name']
-                proxy_url = self.get_integration(api_id).replace('{proxy}', '')
-                url = f'https://{api_id}.execute-api.{self.region}.amazonaws.com/fireprox/'
-                if not api_id == deleted_api_id:
-                    print(f'[{created_dt}] ({api_id}) {name}: {url} => {proxy_url}')
-            except:
-                pass
+                # Only display APIs with names starting with 'fireprox_'
+                if name.startswith('fireprox_'):
+                    proxy_url = self.get_integration(api_id).replace('{proxy}', '')
+                    url = f'https://{api_id}.execute-api.{self.region}.amazonaws.com/fireprox/'
+                    if api_id != deleted_api_id:
+                        logger.info(f'[{created_dt}] ({api_id}) {name}: {url} => {proxy_url}')
+            except Exception as e:
+                logger.error(f'Error processing API: {e}')
 
         return response['items']
 
-    def store_api(self, api_id, name, created_dt, version_dt, url,
-                  resource_id, proxy_url):
-        print(
+    def store_api(self, api_gateways, *, api_id, name, created_dt, version, url, resource_id, proxy_url):
+        logger.info(
             f'[{created_dt}] ({api_id}) {name} => {proxy_url} ({url})'
         )
+        api_gateways[url] = {
+            'api_id': api_id,
+            'name': name,
+            'created_dt': created_dt,
+            'version': version,
+            'url': url,
+            'resource_id': resource_id,
+            'proxy_url': proxy_url
+        }
+        with open('endpoints.json', 'w') as outfile:
+            json.dump(api_gateways, outfile)
 
     def create_deployment(self, api_id):
         if not api_id:
@@ -379,7 +488,10 @@ def parse_arguments() -> Tuple[argparse.Namespace, str]:
     parser.add_argument('--api_id',
                         help='API ID', type=str, required=False)
     parser.add_argument('--url',
-                        help='URL end-point', type=str, required=False)
+                        help='URL to update API Gateway for', type=str, required=False)
+    parser.add_argument('--urls', 
+                        nargs='+', type=str, help='List of URL end-points to create API Gateways for', default=[], required=False)
+
     return parser.parse_args(), parser.format_help()
 
 
@@ -391,26 +503,27 @@ def main():
     args, help_text = parse_arguments()
     fp = FireProx(args, help_text)
     if args.command == 'list':
-        print(f'Listing API\'s...')
+        logger.info(f' Listing API\'s...')
         result = fp.list_api()
 
     elif args.command == 'create':
-        result = fp.create_api(fp.url)
+        urls = fp.urls
+        result = fp.create_api(urls)
 
     elif args.command == 'delete':
-        result = fp.delete_api(fp.api_id)
+        result = fp.delete_api(fp.urls)
         success = 'Success!' if result else 'Failed!'
-        print(f'Deleting {fp.api_id} => {success}')
+        logger.info(f' Deleting {fp.api_id} => {success}')
 
     elif args.command == 'update':
-        print(f'Updating {fp.api_id} => {fp.url}...')
+        logger.info(f' Updating {fp.api_id} => {fp.url}...')
         result = fp.update_api(fp.api_id, fp.url)
         success = 'Success!' if result else 'Failed!'
-        print(f'API Update Complete: {success}')
+        logger.info(f' API Update Complete: {success}')
 
     else:
-        print(f'[ERROR] Unsupported command: {args.command}\n')
-        print(help_text)
+        logger.info(f' [ERROR] Unsupported command: {args.command}\n')
+        logger.info(help_text)
         sys.exit(1)
 
 
